@@ -74,6 +74,7 @@ class acf_field_qrcode extends acf_field {
      */
     function render_field( $field ) {
         ?>
+        <?php $nonce = wp_create_nonce('acf_qrcode_generate'); ?>
         <div class="acf-qrcode-field">
             <input type="text" class="widefat" name="<?php echo esc_attr($field['name']); ?>" value="<?php echo esc_attr($field['value']); ?>" placeholder="<?php esc_attr_e('Enter URL to generate QR Code', 'acf-qrcode-field'); ?>" />
             <div class="acf-qrcode-preview" style="margin-top:10px;">
@@ -100,7 +101,8 @@ class acf_field_qrcode extends acf_field {
                     data: {
                         action: 'generate_qrcode',
                         url: url,
-                        field: <?php echo json_encode($field); ?>
+                        field: <?php echo json_encode($field); ?>,
+                        nonce: '<?php echo esc_js( $nonce ); ?>'
                     },
                     success: function(response) {
                         $preview.html(response);
@@ -205,6 +207,10 @@ class acf_field_qrcode extends acf_field {
     function ajax_generate_qrcode() {
         if (!isset($_POST['url']) || !isset($_POST['field'])) {
             wp_send_json_error('Invalid request');
+        }
+
+        if ( ! check_ajax_referer( 'acf_qrcode_generate', 'nonce', false ) ) {
+            wp_send_json_error('Invalid nonce');
         }
 
         $url = sanitize_text_field($_POST['url']);
