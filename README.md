@@ -37,4 +37,11 @@ display_acf_qr_code('your_qr_code_field_name', null, [
     'class' => 'my-custom-class',
     'data-custom' => 'some-value'
 ]);
+
+## Running Tests
+
+To run the PHPUnit test suite, ensure PHP and PHPUnit are installed and then execute:
+
+```bash
+phpunit
 ```
