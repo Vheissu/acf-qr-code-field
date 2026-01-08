@@ -1,0 +1,42 @@
+{
+    "name": "vheissu/acf-qr-code-field",
+    "description": "Adds a custom QR Code field type to Advanced Custom Fields",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Dwayne Charrington",
+            "homepage": "https://ilikekillnerds.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "ext-gd": "*"
+    },
+    "require-dev": {
+        "pestphp/pest": "^2.0",
+        "mockery/mockery": "^1.6",
+        "brain/monkey": "^2.6"
+    },
+    "autoload": {
+        "classmap": [
+            "acf-qr-code-field/fields/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AcfQrCodeField\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable"
+}

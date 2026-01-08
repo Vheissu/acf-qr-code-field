@@ -47,3 +47,16 @@ wp-config.php
 # uncomment the next line
 #/wp-content/themes
 .DS_Store
+
+# Composer
+/vendor/
+composer.lock
+
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp

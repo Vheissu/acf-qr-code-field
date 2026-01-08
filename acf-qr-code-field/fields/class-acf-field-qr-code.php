@@ -291,7 +291,10 @@ class acf_field_qrcode extends acf_field {
      */
     public function update_value($value, $post_id, array $field): string {
         // Only allow http and https URLs
-        $url = esc_url_raw($value, ['http', 'https']);
+        if ($value === null || $value === '') {
+            return '';
+        }
+        $url = esc_url_raw((string) $value, ['http', 'https']);
         return $url ?: '';
     }
 
