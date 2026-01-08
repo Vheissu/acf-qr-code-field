@@ -1,6 +1,9 @@
 <?php
+
+declare(strict_types=1);
+
 /**
- * ACF QR Code Field Class
+ * ACF QR Code Field Class.
  *
  * @package AcfQrCodeField
  */
@@ -28,12 +31,22 @@ class acf_field_qrcode extends acf_field {
     private const MAX_MARGIN = 10;
 
     /**
+     * Field feature support flags.
+     *
+     * @var array<string, bool>
+     */
+    public $supports = [];
+
+    /**
      * Constructor.
      */
     public function __construct() {
         $this->name = 'qrcode';
-        $this->label = __('QR Code', 'acf-qrcode-field');
+        $this->label = __('QR Code', 'acf-qr-code-field');
         $this->category = 'formatting';
+        $this->supports = [
+            'escaping_html' => true,
+        ];
         $this->defaults = [
             'size' => 200,
             'error_correction' => 'L',
@@ -53,8 +66,8 @@ class acf_field_qrcode extends acf_field {
      */
     public function render_field_settings(array $field): void {
         acf_render_field_setting($field, [
-            'label' => __('Size (px)', 'acf-qrcode-field'),
-            'instructions' => __('Set the size of the QR code in pixels.', 'acf-qrcode-field'),
+            'label' => __('Size (px)', 'acf-qr-code-field'),
+            'instructions' => __('Set the size of the QR code in pixels.', 'acf-qr-code-field'),
             'type' => 'number',
             'name' => 'size',
             'min' => self::MIN_SIZE,
@@ -63,21 +76,21 @@ class acf_field_qrcode extends acf_field {
         ]);
 
         acf_render_field_setting($field, [
-            'label' => __('Error Correction', 'acf-qrcode-field'),
-            'instructions' => __('Select the error correction level.', 'acf-qrcode-field'),
+            'label' => __('Error Correction', 'acf-qr-code-field'),
+            'instructions' => __('Select the error correction level.', 'acf-qr-code-field'),
             'type' => 'select',
             'name' => 'error_correction',
             'choices' => [
-                'L' => __('Low (7%)', 'acf-qrcode-field'),
-                'M' => __('Medium (15%)', 'acf-qrcode-field'),
-                'Q' => __('Quartile (25%)', 'acf-qrcode-field'),
-                'H' => __('High (30%)', 'acf-qrcode-field'),
+                'L' => __('Low (7%)', 'acf-qr-code-field'),
+                'M' => __('Medium (15%)', 'acf-qr-code-field'),
+                'Q' => __('Quartile (25%)', 'acf-qr-code-field'),
+                'H' => __('High (30%)', 'acf-qr-code-field'),
             ],
         ]);
 
         acf_render_field_setting($field, [
-            'label' => __('Margin', 'acf-qrcode-field'),
-            'instructions' => __('Set the margin around the QR code.', 'acf-qrcode-field'),
+            'label' => __('Margin', 'acf-qr-code-field'),
+            'instructions' => __('Set the margin around the QR code.', 'acf-qr-code-field'),
             'type' => 'number',
             'name' => 'margin',
             'min' => self::MIN_MARGIN,
@@ -96,89 +109,69 @@ class acf_field_qrcode extends acf_field {
         $field_name = esc_attr($field['name']);
         $field_value = esc_attr($field['value'] ?? '');
         $field_key = esc_attr($field['key'] ?? '');
+        $size = $this->sanitize_size($field['size'] ?? $this->defaults['size']);
+        $error_correction = $this->sanitize_error_correction($field['error_correction'] ?? $this->defaults['error_correction']);
+        $margin = $this->sanitize_margin($field['margin'] ?? $this->defaults['margin']);
+        $ajax_url = admin_url('admin-ajax.php');
         ?>
-        <div class="acf-qrcode-field" data-field-key="<?php echo $field_key; ?>">
+        <div
+            class="acf-qr-code-field"
+            data-field-key="<?php echo $field_key; ?>"
+            data-size="<?php echo esc_attr((string) $size); ?>"
+            data-error-correction="<?php echo esc_attr($error_correction); ?>"
+            data-margin="<?php echo esc_attr((string) $margin); ?>"
+            data-nonce="<?php echo esc_attr($nonce); ?>"
+            data-ajax-url="<?php echo esc_url($ajax_url); ?>"
+        >
             <input
                 type="url"
                 class="widefat acf-qrcode-input"
                 name="<?php echo $field_name; ?>"
                 value="<?php echo $field_value; ?>"
-                placeholder="<?php esc_attr_e('Enter URL to generate QR Code', 'acf-qrcode-field'); ?>"
+                placeholder="<?php esc_attr_e('Enter URL to generate QR Code', 'acf-qr-code-field'); ?>"
             />
-            <div class="acf-qrcode-preview" style="margin-top:10px;">
+            <div class="acf-qrcode-preview">
                 <?php if (!empty($field['value'])): ?>
                     <?php echo $this->generate_qrcode_image($field['value'], $field); ?>
                 <?php endif; ?>
             </div>
         </div>
-        <script type="text/javascript">
-        (function($){
-            var debounceTimer;
-            var fieldConfig = {
-                size: <?php echo (int) ($field['size'] ?? 200); ?>,
-                error_correction: '<?php echo esc_js($field['error_correction'] ?? 'L'); ?>',
-                margin: <?php echo (int) ($field['margin'] ?? 4); ?>
-            };
-
-            function refreshQrcodeField($el) {
-                var $input = $el.find('.acf-qrcode-input');
-                var $preview = $el.find('.acf-qrcode-preview');
-                var url = $input.val().trim();
-
-                if (!url) {
-                    $preview.html('');
-                    return;
-                }
-
-                // Basic URL validation
-                if (!url.match(/^https?:\/\//i)) {
-                    $preview.html('<p style="color:#d63638;"><?php echo esc_js(__('Please enter a valid URL starting with http:// or https://', 'acf-qrcode-field')); ?></p>');
-                    return;
-                }
-
-                $preview.html('<p><?php echo esc_js(__('Generating QR code...', 'acf-qrcode-field')); ?></p>');
-
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'generate_qrcode',
-                        url: url,
-                        size: fieldConfig.size,
-                        error_correction: fieldConfig.error_correction,
-                        margin: fieldConfig.margin,
-                        nonce: '<?php echo esc_js($nonce); ?>'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $preview.html(response.data);
-                        } else {
-                            $preview.html('<p style="color:#d63638;">' + (response.data || 'Error generating QR code') + '</p>');
-                        }
-                    },
-                    error: function() {
-                        $preview.html('<p style="color:#d63638;"><?php echo esc_js(__('Failed to generate QR code', 'acf-qrcode-field')); ?></p>');
-                    }
-                });
-            }
-
-            function setupField($el) {
-                var $input = $el.find('.acf-qrcode-input');
-                $input.on('input', function() {
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(function() {
-                        refreshQrcodeField($el);
-                    }, 500);
-                });
-            }
-
-            if (typeof acf !== 'undefined') {
-                acf.add_action('ready_field/type=qrcode', setupField);
-                acf.add_action('append_field/type=qrcode', setupField);
-            }
-        })(jQuery);
-        </script>
         <?php
+    }
+
+    /**
+     * Enqueue scripts and styles for the input UI.
+     */
+    public function input_admin_enqueue_scripts(): void {
+        $version = defined('ACF_QR_CODE_FIELD_VERSION') ? ACF_QR_CODE_FIELD_VERSION : '1.0.0';
+        $url = plugin_dir_url(dirname(__DIR__) . '/acf-qr-code-field.php');
+
+        wp_register_script(
+            'acf-qr-code-field-input',
+            $url . 'assets/js/input.js',
+            ['acf-input', 'jquery'],
+            $version,
+            true
+        );
+
+        wp_register_style(
+            'acf-qr-code-field-input',
+            $url . 'assets/css/input.css',
+            ['acf-input'],
+            $version
+        );
+
+        wp_localize_script('acf-qr-code-field-input', 'acfQrCodeField', [
+            'i18n' => [
+                'invalidUrl' => __('Please enter a valid URL starting with http:// or https://', 'acf-qr-code-field'),
+                'generating' => __('Generating QR code...', 'acf-qr-code-field'),
+                'failed' => __('Failed to generate QR code', 'acf-qr-code-field'),
+                'error' => __('Error generating QR code', 'acf-qr-code-field'),
+            ],
+        ]);
+
+        wp_enqueue_script('acf-qr-code-field-input');
+        wp_enqueue_style('acf-qr-code-field-input');
     }
 
     /**
@@ -197,19 +190,19 @@ class acf_field_qrcode extends acf_field {
 
         try {
             if (!class_exists('QRcode')) {
-                throw new Exception(__('QR code library not loaded.', 'acf-qrcode-field'));
+                throw new Exception(__('QR code library not loaded.', 'acf-qr-code-field'));
             }
 
             // Validate URL
             $url = esc_url_raw($url);
             if (empty($url)) {
-                throw new Exception(__('Invalid URL provided.', 'acf-qrcode-field'));
+                throw new Exception(__('Invalid URL provided.', 'acf-qr-code-field'));
             }
 
             // Generate QR code to a temporary file
             $temp_file = tempnam(sys_get_temp_dir(), 'qrcode_');
             if ($temp_file === false) {
-                throw new Exception(__('Could not create temporary file.', 'acf-qrcode-field'));
+                throw new Exception(__('Could not create temporary file.', 'acf-qr-code-field'));
             }
 
             // phpqrcode size is actually a multiplier (1-10), not pixel size
@@ -221,7 +214,7 @@ class acf_field_qrcode extends acf_field {
             $image_data = file_get_contents($temp_file);
 
             if ($image_data === false || empty($image_data)) {
-                throw new Exception(__('Failed to read QR code image.', 'acf-qrcode-field'));
+                throw new Exception(__('Failed to read QR code image.', 'acf-qr-code-field'));
             }
 
             $base64_image = base64_encode($image_data);
@@ -230,7 +223,7 @@ class acf_field_qrcode extends acf_field {
             return sprintf(
                 '<img src="%s" alt="%s" width="%d" height="%d" style="max-width:100%%;height:auto;" />',
                 esc_attr($src),
-                esc_attr__('QR Code', 'acf-qrcode-field'),
+                esc_attr__('QR Code', 'acf-qr-code-field'),
                 $size,
                 $size
             );
@@ -238,7 +231,7 @@ class acf_field_qrcode extends acf_field {
             error_log('ACF QR Code Field Error: ' . $e->getMessage());
             return sprintf(
                 '<p style="color:#d63638;">%s</p>',
-                esc_html__('Error generating QR code.', 'acf-qrcode-field')
+                esc_html__('Error generating QR code.', 'acf-qr-code-field')
             );
         } finally {
             // Always clean up temporary file
@@ -306,12 +299,38 @@ class acf_field_qrcode extends acf_field {
      * @param array $field The field.
      * @return string The QR code image HTML.
      */
-    public function format_value($value, $post_id, array $field): string {
+    public function format_value($value, $post_id, array $field, $escape_html = false): string {
         if (empty($value)) {
             return '';
         }
 
-        return $this->generate_qrcode_image((string) $value, $field);
+        $html = $this->generate_qrcode_image((string) $value, $field);
+
+        if ($escape_html) {
+            return $this->sanitize_output_html($html);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Sanitize HTML output when escape_html is requested by ACF.
+     */
+    private function sanitize_output_html(string $html): string {
+        return wp_kses($html, [
+            'img' => [
+                'src' => true,
+                'alt' => true,
+                'width' => true,
+                'height' => true,
+                'class' => true,
+                'style' => true,
+            ],
+            'p' => [
+                'style' => true,
+                'class' => true,
+            ],
+        ]);
     }
 
     /**
@@ -320,23 +339,23 @@ class acf_field_qrcode extends acf_field {
     public function ajax_generate_qrcode(): void {
         // Verify nonce
         if (!check_ajax_referer('acf_qrcode_generate', 'nonce', false)) {
-            wp_send_json_error(__('Security check failed.', 'acf-qrcode-field'), 403);
+            wp_send_json_error(__('Security check failed.', 'acf-qr-code-field'), 403);
         }
 
         // Check user capability
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error(__('You do not have permission to perform this action.', 'acf-qrcode-field'), 403);
+            wp_send_json_error(__('You do not have permission to perform this action.', 'acf-qr-code-field'), 403);
         }
 
         // Validate required parameter
         if (!isset($_POST['url'])) {
-            wp_send_json_error(__('URL is required.', 'acf-qrcode-field'), 400);
+            wp_send_json_error(__('URL is required.', 'acf-qr-code-field'), 400);
         }
 
         $url = esc_url_raw(sanitize_text_field(wp_unslash($_POST['url'])), ['http', 'https']);
 
         if (empty($url)) {
-            wp_send_json_error(__('Invalid URL. Please enter a valid http or https URL.', 'acf-qrcode-field'), 400);
+            wp_send_json_error(__('Invalid URL. Please enter a valid http or https URL.', 'acf-qr-code-field'), 400);
         }
 
         // Build field config from sanitized POST data (not trusting client-sent field array)

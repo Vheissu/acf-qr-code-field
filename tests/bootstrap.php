@@ -41,6 +41,12 @@ if (!function_exists('esc_attr__')) {
     }
 }
 
+if (!function_exists('esc_url')) {
+    function esc_url(string $url): string {
+        return $url;
+    }
+}
+
 if (!function_exists('esc_html__')) {
     function esc_html__(string $text, string $domain = 'default'): string {
         return esc_html($text);
@@ -92,6 +98,12 @@ if (!function_exists('sanitize_text_field')) {
 if (!function_exists('wp_unslash')) {
     function wp_unslash($value) {
         return is_string($value) ? stripslashes($value) : $value;
+    }
+}
+
+if (!function_exists('wp_kses')) {
+    function wp_kses(string $string, array $allowed_html = []): string {
+        return $string;
     }
 }
 

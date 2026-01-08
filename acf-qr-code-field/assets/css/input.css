@@ -1,0 +1,8 @@
+.acf-qr-code-field .acf-qrcode-preview {
+    margin-top: 10px;
+}
+
+.acf-qr-code-field .acf-qrcode-preview img {
+    max-width: 100%;
+    height: auto;
+}

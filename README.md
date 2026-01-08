@@ -37,11 +37,13 @@ display_acf_qr_code('your_qr_code_field_name', null, [
     'class' => 'my-custom-class',
     'data-custom' => 'some-value'
 ]);
+```
 
 ## Running Tests
 
-To run the PHPUnit test suite, ensure PHP and PHPUnit are installed and then execute:
+To run the test suite, ensure dependencies are installed and then execute:
 
 ```bash
-phpunit
+composer install
+composer test
 ```

@@ -29,6 +29,11 @@ describe('acf_field_qrcode', function (): void {
             expect($this->field->defaults['margin'])->toBe(4);
         });
 
+        it('supports html escaping', function (): void {
+            expect($this->field->supports)->toBeArray()
+                ->and($this->field->supports['escaping_html'])->toBeTrue();
+        });
+
     });
 
     describe('generate_qrcode_image', function (): void {
@@ -188,6 +193,16 @@ describe('acf_field_qrcode', function (): void {
             ]);
 
             expect($result)->toContain('src="data:image/png;base64,');
+            expect($result)->toContain('<img');
+        });
+
+        it('escapes HTML when requested', function (): void {
+            $result = $this->field->format_value('https://example.com', 1, [
+                'size' => 200,
+                'error_correction' => 'L',
+                'margin' => 4,
+            ], true);
+
             expect($result)->toContain('<img');
         });
 
